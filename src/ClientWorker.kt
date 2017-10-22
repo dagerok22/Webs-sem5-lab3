@@ -5,7 +5,7 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.net.SocketAddress
 
-internal class ClientWorker(private val client: Socket, serverPoster: ServerPoster, exiter: Exiter) : Runnable {
+class ClientWorker(private val client: Socket, serverPoster: ServerPoster, exiter: Exiter) : Runnable {
 
     interface ServerPoster {
         fun postToServer(address: SocketAddress, message: String)
@@ -20,7 +20,7 @@ internal class ClientWorker(private val client: Socket, serverPoster: ServerPost
     lateinit var output: PrintWriter
     var poster: ServerPoster = serverPoster
     override fun run() {
-        val line: String
+        var line: String
         try {
             input = BufferedReader(InputStreamReader(client.getInputStream()))
             output = PrintWriter(client.getOutputStream(), true)
@@ -29,15 +29,20 @@ internal class ClientWorker(private val client: Socket, serverPoster: ServerPost
             System.exit(-1)
             exiter.disconnectClient(this)
         }
-
-        try {
-            line = input.readLine()
-            print(line)
-            poster.postToServer(clientSocket.remoteSocketAddress, line)
-        } catch (e: IOException) {
-            println("Read failed")
-            exiter.disconnectClient(this)
-            System.exit(-1)
+        while (true) {
+            try {
+                line = input.readLine()
+                if (line == "exit"){
+                    exiter.disconnectClient(this)
+                    break
+                }
+                print(line)
+                poster.postToServer(clientSocket.remoteSocketAddress, line)
+            } catch (e: IOException) {
+                println("Read failed")
+                exiter.disconnectClient(this)
+                System.exit(-1)
+            }
         }
     }
 
